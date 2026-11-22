@@ -1,0 +1,64 @@
+{
+  "experiment": 1,
+  "subject": 5,
+  "threshold": 0.41210567364804956,
+  "threshold_rule": "midpoint",
+  "genuine_min": 0.8224988880200943,
+  "impostor_max": 0.0017124592760047914,
+  "genuine_count": 1,
+  "impostor_count": 4,
+  "genuine_min_pair": {
+    "score": 0.8224988880200943,
+    "enrollment": "experiments\\exp01\\histograms\\validation\\enrollment\\s05_p02.npy",
+    "probe": "experiments\\exp01\\histograms\\validation\\probe\\s05_p03.npy"
+  },
+  "impostor_max_pair": {
+    "score": 0.0017124592760047914,
+    "subject": 3,
+    "enrollment_prompt": 2,
+    "probe_prompt": 3,
+    "enrollment": "experiments\\exp01\\histograms\\validation\\enrollment\\s05_p02.npy",
+    "probe": "experiments\\exp01\\histograms\\validation\\probe\\s03_p03.npy"
+  },
+  "genuine_scores": [
+    {
+      "score": 0.8224988880200943,
+      "enrollment": "experiments\\exp01\\histograms\\validation\\enrollment\\s05_p02.npy",
+      "probe": "experiments\\exp01\\histograms\\validation\\probe\\s05_p03.npy"
+    }
+  ],
+  "impostor_scores": [
+    {
+      "score": 0.0002774821042699093,
+      "subject": 1,
+      "enrollment_prompt": 2,
+      "probe_prompt": 3,
+      "enrollment": "experiments\\exp01\\histograms\\validation\\enrollment\\s05_p02.npy",
+      "probe": "experiments\\exp01\\histograms\\validation\\probe\\s01_p03.npy"
+    },
+    {
+      "score": 0.0,
+      "subject": 2,
+      "enrollment_prompt": 2,
+      "probe_prompt": 3,
+      "enrollment": "experiments\\exp01\\histograms\\validation\\enrollment\\s05_p02.npy",
+      "probe": "experiments\\exp01\\histograms\\validation\\probe\\s02_p03.npy"
+    },
+    {
+      "score": 0.0017124592760047914,
+      "subject": 3,
+      "enrollment_prompt": 2,
+      "probe_prompt": 3,
+      "enrollment": "experiments\\exp01\\histograms\\validation\\enrollment\\s05_p02.npy",
+      "probe": "experiments\\exp01\\histograms\\validation\\probe\\s03_p03.npy"
+    },
+    {
+      "score": 0.0,
+      "subject": 4,
+      "enrollment_prompt": 2,
+      "probe_prompt": 3,
+      "enrollment": "experiments\\exp01\\histograms\\validation\\enrollment\\s05_p02.npy",
+      "probe": "experiments\\exp01\\histograms\\validation\\probe\\s04_p03.npy"
+    }
+  ]
+}

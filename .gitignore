@@ -16,3 +16,12 @@ Thumbs.db
 
 # Videos
 data/
+
+# LaTeX
+*.aux
+*.log
+*.dvi
+*.synctex.gz
+*.fls
+*.fdb_latexmk
+*.toc

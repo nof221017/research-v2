@@ -106,12 +106,20 @@ def load_sample(sample_path: Path, expected_dimension: int) -> np.ndarray:
     return numeric_sample
 
 
+def encode_codewords(
+    sample: np.ndarray,
+    codebook: np.ndarray,
+) -> np.ndarray:
+    """Assign each temporal descriptor to its nearest codeword."""
+    return pairwise_distances_argmin(sample, codebook)
+
+
 def encode_sample(
     sample: np.ndarray,
     codebook: np.ndarray,
 ) -> np.ndarray:
     """Assign windows to codewords and return an L2-normalized histogram."""
-    codeword_ids = pairwise_distances_argmin(sample, codebook)
+    codeword_ids = encode_codewords(sample, codebook)
     counts = np.bincount(codeword_ids, minlength=len(codebook)).astype(float)
     return counts / np.linalg.norm(counts)
 

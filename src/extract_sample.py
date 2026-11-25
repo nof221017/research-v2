@@ -28,8 +28,8 @@ def load_window_length(experiment: int) -> int:
 def create_temporal_descriptors(
     frame_features: np.ndarray,
     window_length: int,
-) -> np.ndarray:
-    """Concatenate L frames with 50% overlap."""
+) -> tuple[np.ndarray, np.ndarray]:
+    """Return temporal descriptors and their starting frame indices."""
     if window_length < 2 or window_length % 2:
         raise ValueError("Lは2以上の偶数で指定してください")
     if frame_features.ndim != 2 or frame_features.shape[1] != FRAME_FEATURE_COUNT:
@@ -38,16 +38,25 @@ def create_temporal_descriptors(
         )
 
     if len(frame_features) < window_length:
-        return np.empty((0, FRAME_FEATURE_COUNT * window_length), dtype=float)
+        return (
+            np.empty((0, FRAME_FEATURE_COUNT * window_length), dtype=float),
+            np.empty(0, dtype=np.int64),
+        )
 
     stride = window_length // 2
+    frame_indices = np.arange(
+        0,
+        len(frame_features) - window_length + 1,
+        stride,
+        dtype=np.int64,
+    )
     descriptors = [
         frame_features[start : start + window_length].reshape(-1)
-        for start in range(0, len(frame_features) - window_length + 1, stride)
+        for start in frame_indices
     ]
     descriptors_array = np.asarray(descriptors, dtype=float)
     valid = np.isfinite(descriptors_array).all(axis=1)
-    return descriptors_array[valid]
+    return descriptors_array[valid], frame_indices[valid]
 
 
 def extract_frame_features(video_path: Path) -> np.ndarray:
@@ -108,6 +117,16 @@ def sample_output_path(
     return (output_dir / relative_path).with_suffix(".npy")
 
 
+def sample_index_output_path(
+    video_path: Path,
+    data_dir: Path,
+    output_dir: Path,
+) -> Path:
+    """Map a video to its corresponding temporal-index array."""
+    relative_path = video_path.relative_to(data_dir).with_suffix(".npy")
+    return output_dir / relative_path
+
+
 def find_videos(
     data_dir: Path,
     subject: int | None = None,
@@ -137,16 +156,25 @@ def extract_samples(
     subject: int | None = None,
     prompt: int | None = None,
     force: bool = False,
+    indices_output_dir: Path | None = None,
 ) -> list[Path]:
-    """Extract and save one temporal descriptor array per input video."""
+    """Save temporal descriptors and frame indices for each input video."""
     video_paths = find_videos(data_dir, subject=subject, prompt=prompt)
     if not video_paths:
         raise FileNotFoundError("条件に一致する動画が見つかりません")
 
+    if indices_output_dir is None:
+        indices_output_dir = output_dir.parent / "sample_indices"
+
     output_paths = []
     for video_index, video_path in enumerate(video_paths, start=1):
         output_path = sample_output_path(video_path, data_dir, output_dir)
-        if output_path.exists() and not force:
+        indices_path = sample_index_output_path(
+            video_path,
+            data_dir,
+            indices_output_dir,
+        )
+        if output_path.is_file() and indices_path.is_file() and not force:
             print(f"スキップ（既存）: {output_path}")
             continue
 
@@ -155,16 +183,19 @@ def extract_samples(
             flush=True,
         )
         frame_features = extract_frame_features(video_path)
-        descriptors = create_temporal_descriptors(
+        descriptors, frame_indices = create_temporal_descriptors(
             frame_features,
             window_length,
         )
         output_path.parent.mkdir(parents=True, exist_ok=True)
+        indices_path.parent.mkdir(parents=True, exist_ok=True)
         np.save(output_path, descriptors)
+        np.save(indices_path, frame_indices)
         output_paths.append(output_path)
         print(
             f"{video_path}: {len(frame_features)}フレーム, "
-            f"{len(descriptors)}サンプル -> {output_path}"
+            f"{len(descriptors)}サンプル -> {output_path}, "
+            f"フレーム番号 -> {indices_path}"
         )
 
     return output_paths

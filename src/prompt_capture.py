@@ -9,6 +9,7 @@ from experiment_utils import validate_index
 
 
 SAVE_DIRECTORIES = (
+    "collected",
     "training",
     "validation/enrollment",
     "validation/probe",
@@ -56,8 +57,8 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument(
         "--save-dir",
         choices=SAVE_DIRECTORIES,
-        default="training",
-        help="動画の保存先（既定値: training）",
+        default="collected",
+        help="動画の保存先（既定値: collected）",
     )
     parser.add_argument(
         "--force",

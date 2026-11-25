@@ -10,12 +10,31 @@ sys.path.insert(0, str(PROJECT_ROOT / "src"))
 from prompt_capture import (
     SAVE_DIRECTORIES,
     ensure_video_output_available,
+    parse_args,
     video_output_path,
 )
 from prompt_input import handle_enter, read_answer, select_prompt
 
 
 class CaptureRefactorTests(unittest.TestCase):
+    def test_collected_is_the_default_save_directory(self):
+        with patch.object(
+            sys,
+            "argv",
+            ["prompt_capture.py", "3", "7"],
+        ):
+            args = parse_args()
+
+        self.assertEqual(args.save_dir, "collected")
+
+    def test_collected_video_output_path_is_used(self):
+        path = video_output_path(3, 7, "collected")
+
+        self.assertEqual(
+            path.parent,
+            PROJECT_ROOT / "data" / "collected",
+        )
+
     def test_video_output_path_uses_experiment_filename(self):
         path = video_output_path(3, 7, "validation/enrollment")
 
@@ -33,6 +52,7 @@ class CaptureRefactorTests(unittest.TestCase):
         self.assertEqual(
             SAVE_DIRECTORIES,
             (
+                "collected",
                 "training",
                 "validation/enrollment",
                 "validation/probe",

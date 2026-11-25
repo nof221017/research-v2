@@ -5,6 +5,7 @@
 ```
 research/
 ├── data/
+│   ├── collected/
 │   ├── training/
 │   ├── validation/
 │   │   ├── enrollment/
@@ -15,6 +16,13 @@ research/
 │   ├── exp001/
 │   │   ├── config.json
 │   │   ├── samples/
+│   │   │   ├── training/
+│   │   │   ├── validation/
+│   │   │   │   ├── enrollment/
+│   │   │   │   └── probe/
+│   │   │   └── test/
+│   │   │       └── probe/
+│   │   ├── sample_indices/
 │   │   │   ├── training/
 │   │   │   ├── validation/
 │   │   │   │   ├── enrollment/
@@ -34,22 +42,27 @@ research/
 |   │   |   └── test/
 |   │   |       └── probe/
 │   │   ├── threshold/
+│   │   ├── offset/
 │   │   └── results/
 │   │
 │   ├── exp002/
 │   │   ├── config.json
 │   │   ├── samples/
+│   │   ├── sample_indices/
 │   │   ├── models/
 │   │   ├── histograms/
 │   │   ├── threshold/
+│   │   ├── offset/
 │   │   └── results/
 │   │
 │   └── exp003/
 │       ├── config.json
 │       ├── samples/
+│       ├── sample_indices/
 │       ├── models/
 │       ├── histograms/
 │       ├── threshold/
+│       ├── offset/
 │       └── results/
 │
 └── src/
@@ -60,6 +73,7 @@ research/
     ├── extract_sample.py
     ├── build_codebook.py
     ├── encode_histogram.py
+    ├── calculate_offset.py
     ├── calibrate_threshold.py
     ├── authenticate.py
     └── evaluate.py
@@ -80,11 +94,12 @@ research/
 | 順序 | 処理 | 入力 | 出力 |
 | --- | --- | --- | --- |
 | 1 | `prompt_capture.py`または`video_recorder.py`で録画 | 被験者番号、プロンプト番号、保存先 | `data/<分割>/<サブセット>/sXX_pYY.mp4` |
-| 2 | `extract_sample.py`で特徴量抽出 | 録画済み動画と実験設定の`L` | `experiments/expEE/samples/<分割>/<サブセット>/sXX_pYY.npy` |
+| 2 | `extract_sample.py`で特徴量抽出 | 録画済み動画と実験設定の`L` | `experiments/expEE/samples/`と`experiments/expEE/sample_indices/` |
 | 3 | `build_codebook.py`でコードブック学習 | training入力サンプルと実験設定の`L`、`D`、`seed` | `experiments/expEE/models/codebook.npy` |
 | 4 | `encode_histogram.py`でヒストグラム作成 | 入力サンプルとコードブック | `experiments/expEE/histograms/<分割>/<サブセット>/sXX_pYY.npy` |
 | 5 | `calibrate_threshold.py`で閾値決定 | 被験者ごとのvalidationヒストグラム | `experiments/expEE/threshold/sXX_threshold.npy`、`experiments/expEE/threshold/sXX_threshold.json` |
 | 6 | `authenticate.py`で本人認証 | test/probeヒストグラムと被験者閾値 | `experiments/expEE/results/authentication.csv` |
+| 7 | `calculate_offset.py`でオフセット空間を計算 | validation/enrollment・probeの入力サンプルとコードブック | `experiments/expEE/offset/validation/` |
 
 ### 実験設定
 
@@ -104,6 +119,7 @@ experiments/expEE/config.json
 
 | 保存先 | 用途 |
 | --- | --- |
+| `data/collected/` | 一時的な収集データ用（既定） |
 | `data/training/` | コードブック学習用 |
 | `data/validation/enrollment/` | 被験者登録用 |
 | `data/validation/probe/` | 閾値較正用 |
@@ -115,8 +131,10 @@ experiments/expEE/config.json
 | --- | --- |
 | 録画動画 | `data/<分割>/<サブセット>/sXX_pYY.mp4` |
 | 入力サンプル | `experiments/expEE/samples/<分割>/<サブセット>/sXX_pYY.npy` |
+| サンプルのフレーム番号 | `experiments/expEE/sample_indices/<分割>/<サブセット>/sXX_pYY.npy` |
 | コードブック | `experiments/expEE/models/codebook.npy` |
 | ヒストグラム | `experiments/expEE/histograms/<分割>/<サブセット>/sXX_pYY.npy` |
+| オフセット空間 | `experiments/expEE/offset/validation/sXX_pYY__sAA_pBB.csv` |
 | 閾値 | `experiments/expEE/threshold/sXX_threshold.npy` |
 | 閾値メタデータ | `experiments/expEE/threshold/sXX_threshold.json` |
 
@@ -126,6 +144,7 @@ validation/enrollmentから作成される主なファイルは次のとおり�
 ```text
 data/validation/enrollment/s03_p07.mp4
 experiments/exp01/samples/validation/enrollment/s03_p07.npy
+experiments/exp01/sample_indices/validation/enrollment/s03_p07.npy
 experiments/exp01/histograms/validation/enrollment/s03_p07.npy
 ```
 
@@ -140,9 +159,10 @@ experiments/exp01/histograms/validation/enrollment/s03_p07.npy
 | `video_recorder.py` | Webカメラ映像を単独で録画します。 | カメラ動作の確認や、プロンプト入力を伴わない録画 |
 | `prompt_input.py` | `prompts.json`からプロンプトを選択し、キーボード入力を表示・判定します。 | プロンプトと入力画面の単独確認 |
 | `prompt_capture.py` | プロンプト入力とWebカメラ録画を同時に実行します。 | 被験者データの収集 |
-| `extract_sample.py` | 録画済み動画からMediaPipeランドマーク特徴量を抽出し、時間窓サンプルを作成します。 | 動画から`.npy`入力サンプルへの変換 |
+| `extract_sample.py` | 録画済み動画からMediaPipeランドマーク特徴量と時間窓の開始フレーム番号を保存します。 | 動画から入力サンプルへの変換 |
 | `build_codebook.py` | 実験設定とtrainingサンプルからBoWコードブックを作成します。 | コードブックの学習 |
 | `encode_histogram.py` | 入力サンプルをコードブックへ割り当て、L1正規化したヒストグラムを作成します。 | validation/testヒストグラムの作成 |
+| `calculate_offset.py` | validation/enrollmentとvalidation/probeの全ペアについて、同一コードワードのフレーム差をCSVへ保存します。 | BoP用オフセット空間の確認 |
 | `calibrate_threshold.py` | validationの本人・他人ヒストグラムから被験者ごとの閾値とメタデータを決定します。 | 被験者ごとの閾値較正 |
 | `authenticate.py` | test/probeヒストグラムを登録被験者と照合し、本人・他人判定をCSVへ保存します。 | 1対1照合と認証 |
 
@@ -199,14 +219,14 @@ python src\prompt_input.py 7
 | `subject_index` | 位置引数 | 被験者番号 | なし |
 | `prompt_index` | 位置引数 | プロンプト番号 | なし |
 | `--camera-index` | int | 使用するカメラ番号 | `0` |
-| `--save-dir` | choice | 保存先（`training`、`validation/enrollment`、`validation/probe`、`test/probe`） | `training` |
+| `--save-dir` | choice | 保存先（`collected`、`training`、`validation/enrollment`、`validation/probe`、`test/probe`） | `collected` |
 | `--force` | flag | 同名の既存動画を上書きする | 指定なし |
 
 保存対象の動画が既に存在する場合は警告を表示して録画を開始しません。
 既存動画を明示的に上書きする場合のみ`--force`を指定します。
 
 ```powershell
-# 被験者3のプロンプト7をtrainingへ保存
+# 被験者3のプロンプト7をcollectedへ保存（既定）
 python src\prompt_capture.py 3 7
 
 # validation/enrollmentへ保存
@@ -223,8 +243,9 @@ python src\prompt_capture.py 3 7 --save-dir validation/enrollment --force
 
 実験設定`experiments/expXX/config.json`の`L`を読み込み、録画済み動画から
 Lフレームの時間窓サンプルを作成します。時間窓には50%オーバーラップを使用し、
-動画ごとに`experiments/expXX/samples/`へ`sXX_pYY.npy`を保存します。
-既存サンプルは既定でスキップします。
+動画ごとの時間窓特徴量を`experiments/expXX/samples/`へ、各時間窓の開始フレーム番号を
+`experiments/expXX/sample_indices/`へ保存します。フレーム番号は特徴量配列の行と同じ順序で対応します。
+既存のサンプルとフレーム番号が両方存在する場合は既定でスキップします。
 
 | 引数 | 型 | 概要 | 既定値 |
 | --- | --- | --- | --- |
@@ -293,6 +314,21 @@ python src\encode_histogram.py 1 --split test --subset probe
 
 # 既存のヒストグラムを上書き
 python src\encode_histogram.py 1 --force
+```
+
+### `calculate_offset.py`
+
+validation/enrollmentとvalidation/probeの入力サンプルをそれぞれコードワードへ割り当て、
+同一コードワードとなる全ての時間窓の組について、開始フレーム番号の差と出現回数を計算します。
+各動画ペアのCSVは`experiments/expEE/offset/validation/`へ保存され、列は`offset,count`です。
+既存サンプルにフレーム番号ファイルがない場合は、`extract_sample.py`を再実行して作成してください。
+
+```powershell
+# validationのenrollment × probe全ペアを処理
+python src\calculate_offset.py 1
+
+# 既存のオフセットCSVを上書き
+python src\calculate_offset.py 1 --force
 ```
 
 ### `calibrate_threshold.py`
